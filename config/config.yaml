@@ -1,0 +1,39 @@
+defaults:
+    - _self_
+    - datamodule: null
+    - model: null
+    - trainer: null
+    - experiments: null
+
+seed: 2022
+name: null
+version: null
+
+refresh_rate: 1
+num_workers: null
+
+callback_opts:
+  best:
+    monitor: "valid/main"
+    filename: "epoch={epoch}-loss={valid/main:.9f}"
+    save_top_k: 1
+    mode: "min"
+    auto_insert_metric_name: false
+  interval:
+    monitor: "valid/main"
+    filename: "interval_epoch={epoch}-loss={valid/main:.9f}"
+    save_top_k: -1
+    every_n_epochs: 20
+    save_last: true
+    auto_insert_metric_name: false
+
+every_n_epochs_valid: 1
+every_n_epochs_special_valid: 20
+
+
+path:
+    exp_root: null
+
+hydra:
+    run:
+        dir: ${path.exp_root}/${name}/${version}

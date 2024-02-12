@@ -1,0 +1,6 @@
+- experiments=simpleadamw
+- path.exp_root=/data/group1/z44722r/project_tmp/TempleteDir/results/jobs
+- name=plain
+- num_workers=6
+- version=simpleadamw
+- refresh_rate=100

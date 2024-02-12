@@ -1,0 +1,48 @@
+seed: 2022
+name: plain
+version: simpleadamw
+refresh_rate: 100
+num_workers: 6
+callback_opts:
+  best:
+    monitor: valid/main
+    filename: epoch={epoch}-loss={valid/main:.9f}
+    save_top_k: 1
+    mode: min
+    auto_insert_metric_name: false
+  interval:
+    monitor: valid/main
+    filename: interval_epoch={epoch}-loss={valid/main:.9f}
+    save_top_k: -1
+    every_n_epochs: 20
+    save_last: true
+    auto_insert_metric_name: false
+every_n_epochs_valid: 1
+every_n_epochs_special_valid: 20
+path:
+  exp_root: /data/group1/z44722r/project_tmp/TempleteDir/results/jobs
+datamodule:
+  batch_size: 32
+  data_dir: /data/group1/z44722r/project_tmp/data
+model:
+  pl_model: MNISTPLModel
+  optim_cfg:
+    _target_: torch.optim.AdamW
+    lr: 0.02
+  scheduler_cfg: null
+  module_cfg:
+    _target_: models.SimpleClassifier
+    hidden_size: 98
+  pretrained:
+    model_ckpt_path: null
+    trainer_ckpt_path: null
+  augmentations: {}
+  loss:
+    _target_: loss.CELoss
+trainer:
+  _target_: pytorch_lightning.Trainer
+  max_epochs: 100
+  accelerator: gpu
+  devices: 1
+  deterministic: true
+  log_every_n_steps: 1

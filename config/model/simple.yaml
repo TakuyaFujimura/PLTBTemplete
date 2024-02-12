@@ -1,0 +1,19 @@
+pl_model: MNISTPLModel
+
+optim_cfg:
+  _target_: torch.optim.Adam
+  lr: 2.0e-2
+scheduler_cfg: null
+
+module_cfg:
+  _target_: models.SimpleClassifier
+  hidden_size: 98
+
+pretrained:
+  model_ckpt_path: null
+  trainer_ckpt_path: null
+
+augmentations: {}
+
+loss:
+  _target_: loss.CELoss
