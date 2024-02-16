@@ -5,7 +5,7 @@ exp_yaml=$1
 ################################
 project_dir="/data/group1/z44722r/project_tmp"
 repo="PLTBTemplete"
-num_workers=6
+num_workers=0
 ################################
 
 echo "num_workers was set to ${num_workers}"
