@@ -3,7 +3,7 @@ name="plain"
 version=$1
 exp_yaml=$1
 ################################
-project_dir="/data/group1/${USER}/project_tmp"
+project_dir="/nas03/homes/${USER}-${UID}/project_tmp"
 repo="PLTBTemplete"
 num_workers=0
 ################################
