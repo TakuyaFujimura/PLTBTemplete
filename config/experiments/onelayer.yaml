@@ -1,9 +1,5 @@
 # @package _global_
 defaults:
     - override /datamodule: default
-    - override /model: simple
+    - override /model: onelayer
     - override /trainer: default
-
-model:
-  optim_cfg:
-    _target_: torch.optim.AdamW

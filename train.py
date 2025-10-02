@@ -1,85 +1,68 @@
 import logging
-from pathlib import Path
 
 import hydra
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 from hydra.core.hydra_config import HydraConfig
-from hydra.utils import instantiate, to_absolute_path
-from pytorch_lightning import loggers as pl_loggers
-from pytorch_lightning.callbacks import TQDMProgressBar
+from hydra.utils import instantiate
+from lightning.pytorch.callbacks import ModelCheckpoint, TQDMProgressBar
+from lightning.pytorch.loggers import TensorBoardLogger
+from omegaconf import DictConfig, OmegaConf
 
-import pl_models
-from datasets import MNISTDataModule
+from .utils import Config
+
+logger = logging.getLogger(__name__)
 
 
-def load_plmodel(config):
-    if config.model.pretrained.model_ckpt_path is not None:
-        ckpt_path = to_absolute_path(config.model.pretrained.model_ckpt_path)
-        model = eval(f"pl_models.{config.model.pl_model}").load_from_checkpoint(
-            ckpt_path
+def hydra_to_pydantic(config: DictConfig) -> Config:
+    return Config(**OmegaConf.to_object(config))
+
+
+def get_trainer(cfg: Config) -> pl.Trainer:
+    # Checkpoint dir
+    ckpt_dir = cfg.result_dir / cfg.name / cfg.version / "checkpoints"
+
+    # Callbacks
+    callback_list = []
+    for _, callback_cfg in cfg.callback.callbacks.items():
+        callback_list.append(
+            ModelCheckpoint(**callback_cfg, dirpath=ckpt_dir)
         )
-        logging.info("model was successfully loaded from checkpoint")
-    else:
-        model = eval(f"pl_models.{config.model.pl_model}")(config)
-        logging.info("model was successfully created with config")
-    return model
-
-
-def make_tb_logger(cfg):
-    tb_logger = pl_loggers.TensorBoardLogger(
-        save_dir=cfg.path.exp_root,
+    callback_list.append(TQDMProgressBar(refresh_rate=cfg.callback.tqdm_refresh_rate))
+    
+    # Logger
+    pl_logger = TensorBoardLogger(
+        save_dir=cfg.result_dir,
         name=cfg.name,
         version=cfg.version,
     )
-    return tb_logger
 
-
-def make_trainer(cfg, tb_logger):
-    callback_list = []
-    for key_, cfg_ in cfg.callback_opts.items():
-        callback_list.append(
-            pl.callbacks.ModelCheckpoint(
-                **{**cfg_, "dirpath": tb_logger.log_dir + "/checkpoints"}
-            )
-        )
-    callback_list.append(TQDMProgressBar(refresh_rate=cfg.refresh_rate))
+    # Trainer
     trainer = instantiate(
         {
             **cfg.trainer,
             "callbacks": callback_list,
-            "logger": tb_logger,
-            "check_val_every_n_epoch": cfg.every_n_epochs_valid,
+            "logger": pl_logger,
         }
     )
     return trainer
 
-
 @hydra.main(version_base=None, config_path="./config", config_name="config")
-def main(cfg) -> None:
-    if not cfg.trainer.deterministic:
-        logging.warning("Not deterministic!!!")
-    exp_name = HydraConfig().get().run.dir
-    logging.info(f"Start experiment: {exp_name}")
-    logging.info(f"version: {cfg.version}")
+def main(hydra_cfg: DictConfig) -> None:
+    cfg = hydra_to_pydantic(hydra_cfg)
+    if not cfg.trainer.get("deterministic", False):
+        logger.warning("Not deterministic!")
+    logger.info(f"Start experiment: {HydraConfig().get().run.dir}")
+    logger.info(f"version: {cfg.version}")
     pl.seed_everything(cfg.seed, workers=True)
 
-    tb_logger = make_tb_logger(cfg)
-    if Path(tb_logger.log_dir + "/checkpoints").exists():
-        logging.warning("already done")
-        return
-
     logging.info("Create datamodule")
-    dm = MNISTDataModule(cfg)
+    dm = instantiate(cfg.datamodule)
     logging.info("Create new model")
-    model = load_plmodel(cfg)  # saves hyperparameters in the pl_model
-    trainer = make_trainer(cfg, tb_logger)
+    model = instantiate(cfg.model)
+    trainer = get_trainer(cfg)
 
     logging.info("Start Training")
-    trainer.fit(
-        model,
-        dm,
-        ckpt_path=cfg.model.pretrained.trainer_ckpt_path,
-    )
+    trainer.fit(model, dm)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,11 @@
+_target_: pl_model.BasePLModel
+
+optim_cfg:
+  _target_: torch.optim.Adam
+  lr: 2.0e-2
+
+module_cfg:
+  _target_: models.OneLayerClassifier
+
+loss:
+  _target_: loss.CE_and_Acc

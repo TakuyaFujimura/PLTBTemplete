@@ -1,1 +1,1 @@
-from .mnist import MNISTPLModel
+from .base_model import BasePLModel

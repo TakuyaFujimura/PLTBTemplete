@@ -1,80 +1,64 @@
 import logging
 
-import numpy as np
-import pytorch_lightning as pl
+import lightning.pytorch as pl
 import torch
 from hydra.utils import instantiate
+from torch.nn import Module
 
-import utils
+logger = logging.getLogger(__name__)
+
+
+
+def calc_grad_norm(module: Module) -> float:
+    total_norm = 0
+    for p in module.parameters():
+        if p.grad is not None:
+            param_norm = p.grad.data.norm(2)  # type: ignore
+            total_norm += param_norm.item() ** 2
+    total_norm = total_norm**0.5
+    return total_norm
 
 
 class BasePLModel(pl.LightningModule):
-    def __init__(self, config):
+    def __init__(self, network_cfg:dict, loss_cfg:dict, optim_cfg: dict):
         super().__init__()
-        self.config = config
         self.save_hyperparameters()
 
-        self.optim_cfg = self.config.model.optim_cfg
-        self.scheduler_cfg = self.config.model.scheduler_cfg
-
-        self.main_module = instantiate(self.config.model.module_cfg)
-        self.loss_module = instantiate(self.config.model.loss)
-        logging.info(f"Module and loss function was created")
-
-        """
-        Debug Code:
-
-            import models
-            dic_ = dict(self.config.model.proc_cfg)
-            _ = dic_.pop("_target_")
-            dic_ = {**dic_, "state_dict_dict": state_dict_dict}
-            breakpoint()
-            models.FeatextFlowModel(**dic_)
-        """
-
-        # Set up augmentations, validation, and the others
-        self.augmentations = {}
-        for tag_, cfg_ in self.config.model.augmentations.items():
-            self.augmentations[tag_] = instantiate(cfg_)
-
-        self.grad_clipper = None
-        self.grad_every_n_steps = 25
-        self.valid_cnt = 0
-
-    def log_loss(self, loss, log_name, batch_size):
-        self.log(log_name, loss, prog_bar=True, batch_size=batch_size, sync_dist=True)
-
-    def on_after_backward(self):
-        clipping_threshold = None
-        if self.grad_clipper is not None:
-            grad_norm, clipping_threshold = self.grad_clipper(self)
-        else:
-            grad_norm = utils.grad_norm(self)
-        if self.trainer.global_step % self.grad_every_n_steps == 0:
-            if clipping_threshold is None:
-                clipped_norm = grad_norm
-            else:
-                clipped_norm = min(grad_norm, clipping_threshold)
-            opt = self.trainer.optimizers[0]
-            current_lr = opt.state_dict()["param_groups"][0]["lr"]
-            self.logger.log_metrics(
-                {
-                    "grad/norm": grad_norm,
-                    "grad/clipped_norm": clipped_norm,
-                    "grad/lr": current_lr,
-                    "grad/step_size": current_lr * clipped_norm,
-                },
-                step=self.trainer.global_step,
-            )
-
+        self.network = instantiate(network_cfg)
+        self.loss_module = instantiate(loss_cfg)
+        self.optim_cfg = optim_cfg
+    
     def configure_optimizers(self):
         optimizer = instantiate({**{"params": self.parameters()}, **self.optim_cfg})
-        if self.scheduler_cfg is not None:
-            scheduler = instantiate({**self.scheduler_cfg, **{"optimizer": optimizer}})
-            lr_scheduler = {"scheduler": scheduler, "interval": "step"}
-            return {"optimizer": optimizer, "lr_scheduler": lr_scheduler}
-        else:
-            return optimizer
+        return optimizer
 
-    def lr_scheduler_step(self, scheduler, optimizer_idx, metric):
-        scheduler.step()
+    def on_after_backward(self):
+        grad_norm = calc_grad_norm(self)
+        lr = self.trainer.optimizers[0].state_dict()["param_groups"][0]["lr"]
+        self.logger.log_metrics(
+            {
+                "grad/norm": grad_norm,
+                "grad/lr": lr,
+                "grad/step_size": lr * grad_norm,
+            },
+            step=self.trainer.global_step,
+        )
+    
+    def main_process(self, batch, split: str) -> torch.Tensor:
+        x, y = batch
+        output_dict = self.network(x)
+        loss_dict = self.loss_module(output_dict, y)
+        for key, val in loss_dict.items():
+            self.log(key, val, prog_bar=True, batch_size=len(y), sync_dist=True)
+        return loss_dict["main"]
+    
+    def training_step(self, batch, batch_idx) -> torch.Tensor:
+        return self.main_process(batch, split="train")
+
+    def validation_step(self, batch, batch_idx) -> torch.Tensor:
+        return self.main_process(batch, split="valid")
+
+    def test_step(self, batch, batch_idx) -> torch.Tensor:
+        return self.main_process(batch, split="test")
+
+

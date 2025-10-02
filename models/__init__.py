@@ -1,1 +1,1 @@
-from .classifier import SimplestClassifier, SimpleClassifier
+from .classifier import OneLayerClassifier, ThreeLayerClassifier

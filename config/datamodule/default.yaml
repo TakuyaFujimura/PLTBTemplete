@@ -1,2 +1,3 @@
 batch_size: 32
-data_dir: "/data/group1/z44722r/project_tmp/data"
+data_dir: "./data"
+num_workers: 0

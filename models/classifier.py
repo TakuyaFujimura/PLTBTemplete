@@ -1,20 +1,14 @@
 import torch
-from torch.nn import functional as F
 from torch import nn
+from torch.nn import functional as F
 
 
-class SimplestClassifier(nn.Module):
-    """The Simplest Classifier for MNIST"""
-
-    def __init__(
-        self,
-    ) -> None:
+class OneLayerClassifier(nn.Module):
+    def __init__(self, width:int = 28, num_classes: int =10) -> None:
         super().__init__()
-        width = 28
-        num_classes = 10
         self.l1 = torch.nn.Linear(width**2, num_classes)
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> dict:
         x = torch.relu(self.l1(x.view(x.size(0), -1)))
         output_dict = {}
         output_dict["logits"] = F.log_softmax(x, dim=1)
@@ -22,13 +16,9 @@ class SimplestClassifier(nn.Module):
         return output_dict
 
 
-class SimpleClassifier(nn.Module):
-    """Simple Classifier for MNIST"""
-
-    def __init__(self, hidden_size) -> None:
+class ThreeLayerClassifier(nn.Module):
+    def __init__(self, width:int=28, num_classes: int =10, hidden_size: int = 128) -> None:
         super().__init__()
-        width = 28
-        num_classes = 10
         self.model = nn.Sequential(
             nn.Linear(width**2, hidden_size),
             nn.ReLU(),
@@ -39,7 +29,7 @@ class SimpleClassifier(nn.Module):
             nn.Linear(hidden_size, num_classes),
         )
 
-    def forward(self, x):
+    def forward(self, x) -> dict:
         x = self.model(x.view(x.size(0), -1))
         output_dict = {}
         output_dict["logits"] = F.log_softmax(x, dim=1)

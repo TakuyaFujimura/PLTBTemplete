@@ -1,16 +1,19 @@
-import pytorch_lightning as pl
-from torchvision.datasets import MNIST
-from torchvision import transforms
+from typing import Optional
+
+import lightning.pytorch as pl
+import torch
 from omegaconf import DictConfig
-from torch.utils.data import random_split, DataLoader
+from torch.utils.data import DataLoader, random_split
+from torchvision import transforms
+from torchvision.datasets import MNIST
 
 
 class MNISTDataModule(pl.LightningDataModule):
-    def __init__(self, cfg: DictConfig):
+    def __init__(self, data_dir: str, batch_size: int = 32, seed: int = 42):
         super().__init__()
-        self.cfg = cfg
-        self.data_dir = self.cfg.datamodule.data_dir
-        self.batch_size = self.cfg.datamodule.batch_size
+        self.data_dir = self.data_dir
+        self.batch_size = self.batch_size
+        self.seed = seed
         self.transform = transforms.Compose(
             [transforms.ToTensor(), transforms.Normalize((0.1307,), (0.3081,))]
         )
@@ -20,18 +23,17 @@ class MNISTDataModule(pl.LightningDataModule):
         MNIST(self.data_dir, train=True, download=True)
         MNIST(self.data_dir, train=False, download=True)
 
-    def setup(self, stage=None):
-
+    def setup(self, stage: Optional[str] = None):
         # Assign train/val datasets for use in dataloaders
         if stage == "fit" or stage is None:
             mnist_full = MNIST(self.data_dir, train=True, transform=self.transform)
-            self.mnist_train, self.mnist_val = random_split(mnist_full, [55000, 5000])
+            self.mnist_train, self.mnist_val = random_split(
+                mnist_full, [55000, 5000], generator=torch.Generator().manual_seed(self.seed)
+            )
 
         # Assign test dataset for use in dataloader(s)
         if stage == "test" or stage is None:
-            self.mnist_test = MNIST(
-                self.data_dir, train=False, transform=self.transform
-            )
+            self.mnist_test = MNIST(self.data_dir, train=False, transform=self.transform)
 
     def train_dataloader(self):
         return DataLoader(self.mnist_train, batch_size=self.batch_size)

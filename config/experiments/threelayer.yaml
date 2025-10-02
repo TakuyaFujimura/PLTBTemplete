@@ -1,7 +1,7 @@
 # @package _global_
 defaults:
     - override /datamodule: default
-    - override /model: default
+    - override /model: threelayer
     - override /trainer: default
 
 model:
