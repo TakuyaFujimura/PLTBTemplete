@@ -7,8 +7,7 @@ from hydra.utils import instantiate
 from lightning.pytorch.callbacks import ModelCheckpoint, TQDMProgressBar
 from lightning.pytorch.loggers import TensorBoardLogger
 from omegaconf import DictConfig, OmegaConf
-
-from .utils import Config
+from utils import Config
 
 logger = logging.getLogger(__name__)
 

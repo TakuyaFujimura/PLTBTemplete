@@ -5,9 +5,9 @@ from torchmetrics import Accuracy
 
 
 class CE_and_Acc(Module):
-    def __init__(self):
+    def __init__(self, num_classes: int = 10):
         super().__init__()
-        self.accuracy = Accuracy()
+        self.accuracy = Accuracy(task="multiclass", num_classes=num_classes)
 
     def forward(self, output_dict, labels: torch.Tensor) -> dict:
         loss_dict = {}

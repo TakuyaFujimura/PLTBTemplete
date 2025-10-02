@@ -13,6 +13,6 @@ singularity exec \
 	--nv /data/group1/${USER}/latest.sif \
 	bash -c '
 
-./base.sh "simplestadamw"
+./base.sh "threelayer"
 
 '

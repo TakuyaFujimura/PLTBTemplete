@@ -23,7 +23,6 @@ class BasePLModel(pl.LightningModule):
     def __init__(self, network_cfg:dict, loss_cfg:dict, optim_cfg: dict):
         super().__init__()
         self.save_hyperparameters()
-
         self.network = instantiate(network_cfg)
         self.loss_module = instantiate(loss_cfg)
         self.optim_cfg = optim_cfg
@@ -49,7 +48,7 @@ class BasePLModel(pl.LightningModule):
         output_dict = self.network(x)
         loss_dict = self.loss_module(output_dict, y)
         for key, val in loss_dict.items():
-            self.log(key, val, prog_bar=True, batch_size=len(y), sync_dist=True)
+            self.log(f"{split}/{key}", val, prog_bar=True, batch_size=len(y), sync_dist=True)
         return loss_dict["main"]
     
     def training_step(self, batch, batch_idx) -> torch.Tensor:

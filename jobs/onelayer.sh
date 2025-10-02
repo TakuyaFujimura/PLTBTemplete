@@ -13,6 +13,6 @@ singularity exec \
 	--nv /data/group1/${USER}/latest.sif \
 	bash -c '
 
-./base.sh "simpleadamw"
+./base.sh "onelayer"
 
 '

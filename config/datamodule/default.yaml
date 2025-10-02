@@ -1,3 +1,4 @@
+_target_: datamodules.MNISTDataModule
 batch_size: 32
 data_dir: "./data"
 num_workers: 0

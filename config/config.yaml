@@ -8,7 +8,7 @@ defaults:
 
 seed: 42
 result_dir: "./results"
-name: null
+name: "trial"
 version: null
 
 hydra:

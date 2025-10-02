@@ -1,11 +1,13 @@
-_target_: pl_model.BasePLModel
+_target_: pl_models.BasePLModel
 
 optim_cfg:
   _target_: torch.optim.Adam
   lr: 2.0e-2
 
-module_cfg:
+network_cfg:
   _target_: models.OneLayerClassifier
 
-loss:
+loss_cfg:
   _target_: loss.CE_and_Acc
+
+_recursive_: False
